@@ -4,34 +4,22 @@ using UnityEngine;
 using MathNet.Numerics.LinearAlgebra.Single;
 using UnityEngine.Serialization;
 
-public class MySolver
+public class MyJacobianSolver : ISolver
 {
-    [System.Serializable]
-    public class Node
-    {
-        public int id;
-        public Transform transform;
-        public Vector3 axis;
-        public bool useRotationMin;
-        [SerializeField, Range(-180, 180)] public float rotationMin;
-        public bool useRotationMax;
-        [SerializeField, Range(-180, 180)] public float rotationMax;
-    }
-
     public double epsilon = 1E-12;
 
     private (Vector3[] positions, float[] angles, Vector3[] parentRelativePositions, Quaternion[]
-        parentRelativeRotations) GetInitial(Node[] nodes)
+        parentRelativeRotations) GetInitial(IKNode[] nodes)
     {
         var localPositions = new Vector3[nodes.Length];
         var angles = new float[nodes.Length];
         var parentRelativeRotations = new Quaternion[nodes.Length];
         var parentRelativePositions = new Vector3[nodes.Length];
 
-        Node before = null;
+        IKNode before = null;
         for (var index = 0; index < nodes.Length; index++)
         {
-            Node current = nodes[index];
+            IKNode current = nodes[index];
             localPositions[index] = Vector3.Scale(current.transform.localPosition, current.transform.parent?.lossyScale ?? Vector3.positiveInfinity);
             angles[index] = Vector3.Dot(current.transform.localEulerAngles, current.axis);
             parentRelativeRotations[index] =
@@ -101,7 +89,7 @@ public class MySolver
         }
     }
 
-    public float[] Solve(Node[] nodes, Vector3 targetPosition, Quaternion? targetRotation = null,
+    public Quaternion[] Solve(IKNode[] nodes, Vector3 targetPosition, Quaternion? targetRotation = null,
         int iterationLimit = 10)
     {
         var angleRanges = nodes.Select(node => new AngleRange(node.useRotationMin ? node.rotationMin : -180f,
@@ -115,7 +103,7 @@ public class MySolver
         for (var iteration = 0; iteration < iterationLimit; iteration++)
         {
             var jacobianRow = new float[6, length];
-            Node endNode = nodes[nodes.Length - 1];
+            IKNode endIKNode = nodes[nodes.Length - 1];
             var worldPositions = new Vector3[length];
             var tmpWorldRotation = parentRelativeRotations[0];
             var tmpWorldPosition = parentRelativePositions[0];
@@ -180,6 +168,6 @@ public class MySolver
             }
         }
 
-        return angles;
+        return angles.Select((angle,i)=>Quaternion.AngleAxis(angles[i], nodes[i].axis) ).ToArray();
     }
 }
