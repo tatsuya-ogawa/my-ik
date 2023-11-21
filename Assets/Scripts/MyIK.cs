@@ -1,29 +1,32 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using System;
-using UnityEngine.Serialization;
+
+interface ISolver
+{
+    Quaternion[] Solve(IKNode[] nodes, Vector3 targetPosition, Quaternion? targetRotation, int iterationLimit);
+}
 
 [Serializable]
 public class MyIK : MonoBehaviour
 {
-    public MySolver.Node[] nodes;
+    public IKNode[] nodes;
     public Transform target;
-    private MySolver _solver = new MySolver();
+    private ISolver _solver = new MyCCDIKSolver();
 
     // Start is called before the first frame update
     void Start()
     {
     }
 
-    private float[] _angles;
-    public int iterationCount = 100;
+    private Quaternion[] _angles;
+    public int iterationCount = 1;
 
     // Update is called once per frame
     void Update()
     {
         _angles = _solver.Solve(this.nodes, target.position,
-             Quaternion.FromToRotation(Vector3.forward, target.position - nodes[0].transform.position)*target.rotation,
+            Quaternion.FromToRotation(Vector3.forward, target.position - nodes[0].transform.position) *
+            target.rotation,
             iterationCount);
     }
 
@@ -32,7 +35,7 @@ public class MyIK : MonoBehaviour
         if (_angles == null) return;
         for (var i = 0; i < nodes.Length; i++)
         {
-            nodes[i].transform.localRotation = Quaternion.AngleAxis(_angles[i], nodes[i].axis);
+            nodes[i].transform.localRotation = _angles[i];
         }
     }
 }
